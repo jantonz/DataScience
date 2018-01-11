@@ -1,0 +1,104 @@
+---
+title: "Storms and damages: a brief report"
+author: "Josep Anton Mir Tutusaus"
+date: "Monday, May 18, 2015"
+output: html_document
+---
+
+##1.Abstract
+
+Here I present a data analysis performed in the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. Firstly, I read into R only the variables of interest (described below) and obtain its mean, grouped by type of event. Then I arrange the data so the higher mean is in the first row. It's those arranged "means by event" that I present in the form of graph (2 figures). The "Data processing" section describes how the data is read and processed prior to the analysis, which takes places in the section "Results", as well as the graphs.
+
+
+##2. Data Processing
+
+Loading libraries and setting the default figure size to 10x12
+```{r}
+library(dplyr)
+```
+
+```{r global_options}
+knitr::opts_chunk$set(fig.width=10, fig.height=12)
+```
+
+
+The only variables of interest in my analysis are the "type of event" and those related to economic and population consequences. In order to spend the minimum RAM resources, only those variables (columns) are read.
+The data is then grouped by event type (variable EVTYPE) and its mean calculated by the "summarise" function in the "dplyr" package. All data discussed, then, are means of the raw data.
+
+```{r, cache=TRUE}
+data <- read.csv("repdata_data_StormData.csv.bz2", colClasses=c("NULL","NULL","NULL","NULL","NULL","NULL","NULL", NA,"NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL",NA,NA,NA,NA,NA,NA,"NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL","NULL"))
+
+by_event_data <- group_by(data, EVTYPE)
+```
+
+
+a) Types of events most harmful with respect to population health.
+
+Only the top ten events with the most fatalities, and the top ten events with the most injuries are selected in order to perform the analysis. Most of the events do not have any repercussion in the variables selected, that is why only the top ten events are studied.
+
+```{r}
+mean_by_event_data <- summarise(by_event_data, meanFatalities=mean(FATALITIES), meanInjuries=mean(INJURIES))
+topFatalities <- mean_by_event_data %>% filter(meanFatalities>0 | meanInjuries>0) %>% arrange(desc(meanFatalities, meanInjuries)) %>% slice(1:10)
+topInjuries <- mean_by_event_data %>% filter(meanFatalities>0 | meanInjuries>0) %>% arrange(desc(meanInjuries, meanFatalities)) %>% slice(1:10)
+```
+
+
+b) Types of events with the greatest economic consequences.
+
+Only the top ten events with regard to property and crop damage are selected, following the previous reasoning. 
+
+```{r}
+eco_mean_by_event_data <- summarise(by_event_data, meanPROPDMG=mean(PROPDMG), meanCROPDMG=mean(CROPDMG))
+topProperty <- eco_mean_by_event_data %>% filter(meanPROPDMG>0 | meanCROPDMG>0) %>% arrange(desc(meanPROPDMG, meanCROPDMG)) %>% slice(1:10)
+topCrop <- eco_mean_by_event_data %>% filter(meanPROPDMG>0 | meanCROPDMG>0) %>% arrange(desc(meanCROPDMG, meanPROPDMG)) %>% slice(1:10)
+```
+
+
+##3. Results
+###3.1. Which types of events are most harmful with respect to population health?
+
+```{r}
+library(ggplot2)
+require(gridExtra)
+
+q1 <- qplot(topFatalities$EVTYPE,topFatalities$meanFatalities, data=topFatalities, xlab="Event type", ylab="Number of fatalities", main="Fatalities")
+q1 <- q1 + theme(axis.text.x=element_text(angle=+90))
+
+q2 <- qplot(topInjuries$EVTYPE,topInjuries$meanInjuries, data=topInjuries, xlab="Event type", ylab="Number of injuries", main="Injuries")
+q2 <- q2 + theme(axis.text.x=element_text(angle=+90))
+
+grid.arrange(q1, q2, nrow=2)
+```
+
+
+This figure shows the ten most dangerous events in regards to the mean of fatalities and injuries. Tornadoes/hail and cold/snow are the events with the most casualties, with 25 and 14 fatalities, respectively. In contrast, it is the heat wave the event with more injuries, 70, followed by tropical storm Gordon and wild fires, with 44 and 38 injured pepople, respectively.
+
+```{r}
+filter(data, FATALITIES==max(FATALITIES))
+filter(data, INJURIES==max(INJURIES))
+```
+
+
+As you can see in these tables, heat is the most fatal event, and tornado is the worst event in reagards to injured pepole.
+
+
+###3.2. Which types of events have the greatest economic consequences?
+```{r}
+q3 <- qplot(topProperty$EVTYPE,topProperty$meanPROPDMG, data=topProperty, xlab="Event type", ylab="Property damage", main="Property damage")
+q3 <- q3 + theme(axis.text.x=element_text(angle=+90))
+
+q4 <- qplot(topCrop$EVTYPE,topCrop$meanCROPDMG, data=topCrop, xlab="Event type", ylab="Crop damage", main="Crop damage")
+q4 <- q4 + theme(axis.text.x=element_text(angle=+90))
+
+grid.arrange(q3, q4, nrow=2)
+```
+
+
+This figure shows the ten most dangerous events in regards to economic consequences; more precisely, to property damage and crop damage. Coastal erosion is the event with the most cost, nearly 800. When speaking about crop damage, dust storm/high winds, forest fires and the tropical storm Gordon are tied with 500 worth of crop damage.
+
+```{r}
+filter(data, PROPDMG==max(PROPDMG))
+filter(data, CROPDMG==max(CROPDMG))
+```
+
+As you can see in these tables, thunderstorm wind, flash flood and watersprout are the events with the most property damage, while drought (as we can expect) is the event with the most crop damage.

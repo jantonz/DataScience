@@ -1,0 +1,137 @@
+---
+title: 'Statistical Inference Course Project 2: Playing with Tooth Growth Data'
+author: "Josep Anton Mir Tutusaus"
+date: "Monday, June 15, 2015"
+output: pdf_document
+---
+
+##1. Overview: summary of the data
+
+```{r}
+library(datasets)
+library(ggplot2)
+library(dplyr)
+```
+
+Here there is a small description of the data set, as stated in the R Documentation:
+
+>##The Effect of Vitamin C on Tooth Growth in Guinea Pigs
+>
+>###Description
+>
+>The response is the length of odontoblasts (teeth) in each of 10 guinea pigs at each of >three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange >juice or ascorbic acid).
+>
+>###Usage
+>
+>ToothGrowth
+>
+>###Format
+>
+>A data frame with 60 observations on 3 variables.
+>
+>[,1]     len	 numeric	 Tooth length
+>[,2]	 supp	 factor	 Supplement type (VC or OJ).
+>[,3]	 dose	 numeric	 Dose in milligrams.
+
+We can have a full view of the data in this plot:
+
+```{r}
+qplot(len, data=ToothGrowth, binwidth=1, facets=.~dose, colour=supp)
+```
+
+And a better understanding of the realtion between length and dose, and between length and supplement type in this plot:
+
+```{r}
+coplot(len ~ dose | supp, data = ToothGrowth, panel = panel.smooth, xlab = "ToothGrowth data: length vs dose, given type of supplement")
+```
+
+We can see in the figures that the length of teeth grows as the vitamin C dose rises. It may have better results for orange juice in the 0.5 and 1.0 mg dose, but it may be equal between OJ and VC within the 2.0 mg dose. Is that true?
+
+##2. Results and discussion
+
+Here I'm going to present hypothesis tests to compare tooth growth by supp and dose.
+
+###2.1. Tooth growth vs. dose
+
+```{r}
+TG <- split(ToothGrowth, ToothGrowth$supp)
+TGOJ <- as.data.frame(TG[1]); TGVC <- as.data.frame(TG[2])
+```
+
+####2.1.1. Orange juice (OJ)
+
+```{r}
+TGOJdose <- split(TGOJ, factor(TGOJ$OJ.dose))
+aTGOJdose <- as.data.frame(TGOJdose[1]); bTGOJdose <- as.data.frame(TGOJdose[2]); cTGOJdose <- as.data.frame(TGOJdose[3])
+```
+
+*Are 0.5 mg and 1.0 mg treatments statistically different?
+```{r}
+t.test(aTGOJdose$X0.5.OJ.len, bTGOJdose$X1.OJ.len, var.equal=TRUE)
+```
+Yes ,they are! 1.0 mg treatment produces larger teeth.
+
+*Are 1.0 mg and 2.0 mg treatments statistically different?
+```{r}
+t.test(bTGOJdose$X1.OJ.len, cTGOJdose$X2.OJ.len, var.equal=TRUE)
+```
+Yes ,they are! 2.0 mg treatment produces larger teeth.
+
+Logically, 2.0 mg treatment produce larger theeth than 0.5 mg treatment.
+
+####2.1.2. Ascorbic acid (VC)
+
+```{r}
+TGVCdose <- split(TGVC, factor(TGVC$VC.dose))
+aTGVCdose <- as.data.frame(TGVCdose[1]); bTGVCdose <- as.data.frame(TGVCdose[2]); cTGVCdose <- as.data.frame(TGVCdose[3])
+```
+
+*Are 0.5 mg and 1.0 mg treatments statistically different?
+```{r}
+t.test(aTGVCdose$X0.5.VC.len, bTGVCdose$X1.VC.len, var.equal=TRUE)
+```
+Yes ,they are! 1.0 mg treatment produces larger teeth.
+
+*Are 1.0 mg and 2.0 mg treatments statistically different?
+```{r}
+t.test(bTGVCdose$X1.VC.len, cTGVCdose$X2.VC.len, var.equal=TRUE)
+```
+Yes ,they are! 2.0 mg treatment produces larger teeth.
+
+Logically, 2.0 mg treatment produce larger theeth than 0.5 mg treatment.
+
+###2.1. Tooth growth vs. supplement
+
+For the sake of the study, let's assume that our goal is to produce larger teeth. The 2.0 mg treatment showed to be the best choice, so now it is important how to supply these 2.0 mg, by orange juice (OJ) or by ascorbic acid (VC).
+
+*Are OJ and VC supplements statistically different, in reagards to 2.0 mg dose?
+```{r}
+t.test(cTGOJdose$X2.OJ.len, cTGVCdose$X2.VC.len, var.equal=TRUE)
+```
+No, they are not! It is unimportant what supplement we choose to supply the vitamin C.
+
+*Are OJ and VC supplements statistically different, in reagards to 1.0 mg dose?
+```{r}
+t.test(bTGOJdose$X1.OJ.len, bTGVCdose$X1.VC.len, var.equal=TRUE)
+```
+Yes, they are! Oranje juice produces larger teeth.
+
+*Are OJ and VC supplements statistically different, in reagards to 0.5 mg dose?
+```{r}
+t.test(aTGOJdose$X0.5.OJ.len, aTGVCdose$X0.5.VC.len, var.equal=TRUE)
+```
+Yes, they are! Oranje juice produces larger teeth.
+
+##3. Conclusions and assumptions
+
+I'm assuming that:
+
+In regards to the experimental design:
+- There are 60 guinea pigs, one of each receives a specific treatment.
+- There are 6 groups of 10 guinea pigs: 0.5 mg + OJ, 1 mg + OJ, 2 mg + OJ, 0.5 mg + VC, 1 mg + VC, 2 mg + VC.
+
+In regards to statistical assumptions:
+- All events are independent.
+- All events have the same variance. It is reasonable, as the groups contain the same number of guinea pigs.
+
+In light of these assumptions, we conclude that 2.0 mg doses produce larger teeth than 0.5 and 1.0 mg doses. There's only signifficant difference between the two supplements (OJ and VC) in the 0.5 and the 1.0 mg treatments.

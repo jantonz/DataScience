@@ -1,0 +1,131 @@
+---
+title: "Regression Models Project"
+author: "Josep Anton Mir Tutusaus"
+date: "Friday, November 06, 2015"
+output: pdf_document
+---
+
+###1. Executive summary
+
+Motor Trend, an automobile trend magazine is interested in exploring the relationship between a set of variables and miles per gallon (MPG) outcome. In this project, we will analyze the mtcars dataset from the 1974 Motor Trend US magazine to answer the following questions:
+
+-Is an automatic or manual transmission better for miles per gallon (MPG)?
+
+-How different is the MPG between automatic and manual transmissions?
+
+We fitted a simple model that correlates automatic/manual transmission and weight with miles per gallon.
+
+###2. Exploratory analysis
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(grid)
+library(dplyr)
+```
+
+The data set has 32 observations (models of cars) on 11 variables.
+
+We are particularly interested in the realtionship between automatic/manual transmission [am] and Miles/(US) gallon [mpg].
+
+```{r}
+summary(lm(mpg ~ factor(am) - 1, data = mtcars))$coef
+```
+As we can see in this fit between mpg and am, with omitted intercept, the mean mpg for automatic and manual are, respectively, 17.15 and 24.39, both significally superior to 0.
+
+```{r}
+summary(lm(mpg ~ factor(am), data = mtcars))$coef
+```
+If we compare the two groups (automatic and manual transmission), we observe that manual transmission has significally higher mpg mean than automatic transmission.
+
+We suspect, nonetheless, that other variables could affect mpg.
+```{r}
+summary(lm(mpg ~ . , data = mtcars))$coef
+```
+Weight, in particular, seems to be negatively correlated with mpg, and that makes sense: every 1000 lbs we move up, the mpg diminishes by 3.71.
+
+Let's visualise it:
+
+```{r, fig.width=7, fig.height=3}
+mtcars$am <- factor(mtcars$am)
+levels(mtcars$am) <- c("Automatic", "Manual")
+g = ggplot(data = mtcars, aes(y = mpg, x = wt))
+g = g + geom_point(aes(colour=am)) + ylim(0,40)
+g = g + xlab("Weight") + ylab("Miles / gallon")
+g = g + geom_hline(yintercept = as.numeric(summarise(group_by(mtcars, am), mean(mpg))[1,2]), color = "dark orange", size = 1)
+g = g + geom_hline(yintercept = as.numeric(summarise(group_by(mtcars, am), mean(mpg))[2,2]), color = "light blue", size = 1)
+g
+```
+We can see that the cars with automatic transmission, which have inferior mean (horizontal line at 17.15 mpg) also weight more, as can be visualized by the size of the dots. The cars with manual transmission have higher mpg mean (24.39) and weight less. We suspect that weight plays an important role in mpg.
+
+###3. Modelling
+
+Let's propose 2 models: one that takes into account both weight and type of transmission and a third with an interaction term. We saw before that a model with only am variable could not explain much of the variability, so we do not present that model in this section:
+
+```{r}
+fit1 <- lm(mpg ~ wt + am, data = mtcars)
+fit2 <- lm(mpg ~ wt * am, data = mtcars)
+
+summary(fit1)$coef
+summary(fit2)$coef
+
+```
+
+On the first model mpg = a + b*wt + c*am + E, b equals the slope, c is the difference in means between automatic and manual. E is the error term (everything we didn't measure).
+
+On the second model, mpg = a + b*wt + c*am + d*wt*am + E, with interaction term, c is the change in the intercept for manual transmission, d is the change in slope for manual transmission. E is the error term (everything we didn't measure).
+
+```{r}
+anova(fit1, fit2) 
+```
+
+We compare the models and choose the second one because has better RSS and explains 83.3% of the variability.
+
+Refer to Apendix I.1 for the plots for the two models.
+
+###4. Residuals Analysis and diagnostics
+
+According to the residual plots (Apendix I.2), we can verify the following underlying assumptions:
+
+1. The Residuals vs. Fitted plot shows no pattern, so that verifies the independence condition.
+2. The Normal Q-Q plot shows that the residuals are normally distributed (plotted around the line).
+3. The Scale-Location plot confirms the constant variance assumption, as the points are randomly distributed.
+4. The Residuals vs. Leverage show that there are some outliers.
+
+```{r}
+m <- hatvalues(fit2)
+tail(sort(m),3)
+
+n <- dfbetas(fit2)
+tail(sort(n[,4]),3)
+```
+
+Points with most leverage can be calculated via hatvalues and the ones that influence the model the most via dfbetas. Those are in accord with the points outliers in the residuals plots.
+
+####Apendix I
+
+```{r}
+g1 <- g + geom_abline(intercept = fit1$coef[1], slope = fit1$coef[2]) + geom_abline(intercept = fit1$coef[1] + fit1$coef[3], slope = fit1$coef[2]) + ggtitle("First model")
+```
+
+```{r}
+g2 <- g + geom_abline(intercept = fit2$coef[1], slope = fit2$coef[2]) + geom_abline(intercept = fit2$coef[1] + fit2$coef[3], slope = fit2$coef[2] + fit2$coef[4]) + ggtitle("Second model")
+```
+
+###I.1 Models
+
+```{r, fig.width=7, fig.height=4}
+vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
+
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(2, 1)))
+
+print(g1, vp = vplayout(1,1))
+print(g2, vp = vplayout(2,1))
+```
+
+###I.2 Residual plots
+
+```{r, fig.width=7, fig.height=7}
+par(mfrow = c(2, 2))
+plot(fit2)
+```

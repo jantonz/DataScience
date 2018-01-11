@@ -1,0 +1,19 @@
+---
+title: "Practical_Machine_Learning_Course_Project"
+author: "Josep Anton Mir Tutusaus"
+date: "8 d' abril de 2016"
+output: html_document
+---
+
+Variable "X" is does not reallistically explain any movement pattern, so it should be no used in the  
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

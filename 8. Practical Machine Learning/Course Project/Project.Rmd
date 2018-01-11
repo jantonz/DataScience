@@ -1,0 +1,53 @@
+---
+title: "Practical_Machine_Learning_Course_Project"
+author: "Josep Anton Mir Tutusaus"
+date: "8 d' abril de 2016"
+output: html_document
+---
+```{r}
+library(caret)
+library(plyr)
+library(dplyr)
+```
+
+The goal is to predict the manner in which they did the exercise: predict the "classe" variable in the training set.
+
+If several columns (or variables) are filled with NAs, I should get rid of them as soon as possible to accelerate the computation. 
+
+Variable "X" does not reallistically explain any movement pattern, so it should be no used in the machine learning algorithm. Variable "user_name" might explain part of the variance, and could be used in the fit, but I would like the prediction not to be dependant on who is the user. In other words, the fit should be able to be used regardless of the user.
+
+Other variables are time-related: "raw_timestamp_part_1", "raw_timestamp_part_2" and "cvtd_timestamp". Variables "new_window" and "num_window" are also highly correlated with time. The machine learning algorithm should be focused on several variables, but not time-related variables. This should be not included.
+
+```{r}
+data <- read.csv("pml-training.csv")
+data <- data[colSums(!is.na(data)) > 0]
+data <- select(data, -contains("time"))
+data <- select(data, -contains("window"))
+data <- select(data, -1)
+data_final <- select(data, -matches("user_name"))
+```
+
+I've tried random forest and generalized boosted model to try to model the "classe" class. I first create a control called ctrl to be used in both models. I tried cross validation, testing each model in 10 diferent parts of my data, repeated 5 times over. This leads to a higher computation time.
+
+```{r}
+ctrl <- trainControl(method="repeatedcv", number=10, repeats=5, selectionFunction = "oneSE")
+
+fitRF <- train(classe ~ ., data=data_fit, method="rf", trControl=ctrl)
+fitGBM <- train(classe ~ ., data=data_fit, method="gbm", trControl=ctrl, verbose=FALSE)
+```
+
+Accuracy of the random forest fit is 
+```{r, verbose=F} 
+fitRF[[4]]$Accuracy[2]
+```
+and accuracy of the generalized boosting model fit is
+```{r, verbose=F} 
+fitGBM[[4]]$Accuracy[6]
+```
+
+I suspect that variables with a lot of NA's may not play an important role in the fit. I will keep only variables without NAs:
+```{r}
+NAs <- apply(data, 2, function(x) {sum(is.na(x))})
+
+data_fit <- data[, which(NAs == 0)]
+```
